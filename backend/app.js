@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import fetch from "node-fetch"; // En Node 18+ puedes eliminar esta línea
 
 import authRouter from "./routes/auth.route.js";
 import userRouter from "./routes/user.route.js";
@@ -13,11 +14,29 @@ const app = express();
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 const PORT = Number(process.env.PORT || 8800);
 
-// __dirname para ESM
+// Obtener __dirname en ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// CORS (antes de rutas)
+// =============================
+// 🔥 Función para obtener IP pública EC2
+// =============================
+async function getPublicIP() {
+  try {
+    const res = await fetch(
+      "http://169.254.169.254/latest/meta-data/public-ipv4",
+      { timeout: 2000 }
+    );
+    if (!res.ok) throw new Error("Metadata not available");
+    return await res.text();
+  } catch (err) {
+    return "IP_NOT_AVAILABLE";
+  }
+}
+
+// =============================
+// 🛡 CORS
+// =============================
 app.use(
   cors({
     origin: CLIENT_URL,
@@ -27,17 +46,20 @@ app.use(
   })
 );
 
-// Preflight
 app.options("*", cors());
 
+// =============================
 // Middlewares
+// =============================
 app.use(express.json());
 app.use(cookieParser());
 
-// Servir public/index.html en /
+// =============================
+// Servir archivos estáticos (public/index.html)
+// =============================
 app.use(express.static(path.join(__dirname, "public")));
 
-// Health endpoint (para que index.html lea info)
+// Endpoint de health check
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -50,12 +72,21 @@ app.get("/health", (req, res) => {
   });
 });
 
-// API routes
+// =============================
+// Rutas API
+// =============================
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 
+// =============================
+// 🚀 Iniciar servidor
+// =============================
+app.listen(PORT, "0.0.0.0", async () => {
+  const publicIP = await getPublicIP();
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  console.log(`✅ CORS allowed origin: ${CLIENT_URL}`);
+  console.log("==========================================");
+  console.log(`🚀 Server is running on: http://${publicIP}:${PORT}`);
+  console.log(`🌍 Public IP detected: ${publicIP}`);
+  console.log(`🔐 CORS allowed origin: ${CLIENT_URL}`);
+  console.log("==========================================");
 });

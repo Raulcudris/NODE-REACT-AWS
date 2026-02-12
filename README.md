@@ -81,6 +81,8 @@ backend/
 │── scripts/
 │   └── seed.js
 │
+│── public/
+│   └── index.html
 │── .env
 │── package.json
 │── README.md
