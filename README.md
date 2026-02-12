@@ -85,6 +85,7 @@ backend/
 │── package.json
 │── README.md
 
+
 🔧 Configuración
 1️⃣ Clonar repositorio
 git clone https://github.com/tu-usuario/tu-repo.git
