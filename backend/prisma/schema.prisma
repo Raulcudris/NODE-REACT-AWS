@@ -7,12 +7,177 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  avatar    String?
-  createdAt DateTime @default(now())  
+enum Role {
+  ADMIN
+  OPERATOR
+  CUSTOMER
 }
 
+enum OrderStatus {
+  PENDING
+  WHATSAPP_PENDING
+  CONFIRMED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderChannel {
+  WEB
+  WHATSAPP
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  PSE
+  TRANSFER
+}
+
+enum PaymentStatus {
+  APPROVED
+  REJECTED
+}
+
+enum PreOrderStatus {
+  DRAFT
+  SENT
+  CONVERTED
+  ABANDONED
+}
+
+model User {
+  id        BigInt   @id @default(autoincrement())
+  username  String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(255)
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  customers Customer[]
+
+  @@map("users")
+}
+
+model Category {
+  id          BigInt   @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            BigInt   @id @default(autoincrement())
+  name          String   @db.VarChar(150)
+  slug          String?  @unique @db.VarChar(150)
+  description   String?  @db.Text
+  imageFolder   String?  @map("image_folder") @db.VarChar(255)
+  price         Decimal  @db.Decimal(10, 2)
+  stock         Int
+  ageRestricted Boolean  @default(false) @map("age_restricted")
+  categoryId    BigInt   @map("category_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  category      Category       @relation(fields: [categoryId], references: [id])
+  orderItems    OrderItem[]
+  preOrderItems PreOrderItem[]
+
+  @@map("products")
+}
+
+model Customer {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt?  @map("user_id")
+  firstName  String   @map("first_name") @db.VarChar(100)
+  lastName   String   @map("last_name")  @db.VarChar(100)
+  email      String   @unique @db.VarChar(150)
+  phone      String?  @db.VarChar(20)
+  address    String?  @db.Text
+  city       String?  @db.VarChar(100)
+  country    String?  @db.VarChar(100)
+  postalCode String?  @map("postal_code") @db.VarChar(20)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user      User?      @relation(fields: [userId], references: [id])
+  orders    Order[]
+  preOrders PreOrder[]
+
+  @@map("customers")
+}
+
+model Order {
+  id           BigInt       @id @default(autoincrement())
+  customerId   BigInt?      @map("customer_id")
+  total        Decimal      @db.Decimal(10, 2)
+  status       OrderStatus  @default(WHATSAPP_PENDING)
+  channel      OrderChannel @default(WHATSAPP)
+  contactPhone String?      @map("contact_phone") @db.VarChar(20)
+  notes        String?      @db.Text
+  confirmedAt  DateTime?    @map("confirmed_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+  payment  Payment?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        BigInt  @id @default(autoincrement())
+  orderId   BigInt  @map("order_id")
+  productId BigInt  @map("product_id")
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id        BigInt        @id @default(autoincrement())
+  orderId   BigInt        @unique @map("order_id")
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMethod
+  status    PaymentStatus
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model PreOrder {
+  id           BigInt        @id @default(autoincrement())
+  customerId   BigInt?       @map("customer_id")
+  guestName    String?       @map("guest_name") @db.VarChar(150)
+  guestPhone   String?       @map("guest_phone") @db.VarChar(20)
+  guestCity    String?       @map("guest_city") @db.VarChar(100)
+  total        Decimal       @db.Decimal(10, 2)
+  status       PreOrderStatus @default(DRAFT)
+  whatsappLink String?       @map("whatsapp_link") @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  customer Customer?    @relation(fields: [customerId], references: [id])
+  items    PreOrderItem[]
+
+  @@map("pre_orders")
+}
+
+model PreOrderItem {
+  id         BigInt  @id @default(autoincrement())
+  preOrderId BigInt  @map("pre_order_id")
+  productId  BigInt  @map("product_id")
+  quantity   Int
+  price      Decimal @db.Decimal(10, 2)
+
+  preOrder PreOrder @relation(fields: [preOrderId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@map("pre_order_items")
+}

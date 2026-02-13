@@ -4,13 +4,23 @@ import cors from "cors";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import fetch from "node-fetch";
 
 // Routes
 import authRouter from "./routes/auth.route.js";
 import userRouter from "./routes/user.route.js";
+import categoriesRouter from "./routes/categories.route.js";
+import productsRouter from "./routes/products.route.js";
+import customersRouter from "./routes/customers.route.js";
+import ordersRouter from "./routes/orders.route.js";
+import paymentsRouter from "./routes/payments.route.js";
+import preOrdersRouter from "./routes/preorders.route.js";
 
 const app = express();
+
+// 🔥 Fix global para BigInt en JSON
+app.set("json replacer", (key, value) =>
+  typeof value === "bigint" ? value.toString() : value
+);
 
 // =============================
 // 🔧 CONFIG
@@ -30,7 +40,7 @@ async function getPublicIP() {
     const res = await fetch("http://169.254.169.254/latest/meta-data/public-ipv4");
     if (!res.ok) throw new Error("Metadata not available");
     return await res.text();
-  } catch (err) {
+  } catch {
     return "IP_NOT_AVAILABLE";
   }
 }
@@ -60,7 +70,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
 // =============================
-// HEALTH CHECK — FIXED
+// HEALTH CHECK
 // =============================
 app.get("/health", (req, res) => {
   res.json({
@@ -77,6 +87,12 @@ app.get("/health", (req, res) => {
 // =============================
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
+app.use("/api/categories", categoriesRouter);
+app.use("/api/products", productsRouter);
+app.use("/api/customers", customersRouter);
+app.use("/api/orders", ordersRouter);
+app.use("/api/payments", paymentsRouter);
+app.use("/api/preorders", preOrdersRouter);
 
 // =============================
 // 🚀 Run Server
